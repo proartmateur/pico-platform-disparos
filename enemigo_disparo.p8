@@ -30,6 +30,7 @@ function _init()
     
     level_name="base"
     enemy_skin="base"
+    weapon="base"
      
 end
 
@@ -377,8 +378,19 @@ function update_enemy_destruction(e)
             else
                 plr.score += e.value
             end
+            
+            if weapon == "fire" then
+													plr.score += 3
+												elseif weapon == "acid" then
+													plr.score += 2
+												elseif weapon == "ice" then
+													plr.score += 1
+												end
             update_hud()
         end
+        
+        
+								
     end
 end
 
@@ -421,9 +433,23 @@ end
 
 
 function draw_bullets()
+				local wc1 = 6
+				local wc2 = 7
+				
+				if weapon == "fire" then
+					wc1 = 8
+					wc2 = 10
+				elseif weapon == "acid" then
+					wc1 = 11
+					wc2 = 10
+				elseif weapon == "ice" then
+					wc1 = 12
+					wc2 = 7
+				end
+				
     for b in all(bullets) do
-        circfill(b.x, b.y, 2, 6)
-        circfill(b.x, b.y, 1, 7)
+        circfill(b.x, b.y, 2, wc1)
+        circfill(b.x, b.y, 1, wc2)
     end
 end
 
