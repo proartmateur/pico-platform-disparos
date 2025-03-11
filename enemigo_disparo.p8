@@ -31,7 +31,10 @@ function _init()
     level_name="base"
     enemy_skin="base"
     weapon="base"
-    boss_init(10, 12, 10)
+    boss_init(9*8, 2*8, 10)
+
+    -- Variable global para evitar daれねo continuo
+    player_invincible_timer = 0
      
 end
 
@@ -91,6 +94,12 @@ end
 
 
 function update_player()
+
+    -- Reducir el timer de invulnerabilidad si es mayor a 0
+    if player_invincible_timer > 0 then
+        player_invincible_timer -= 1
+    end
+
     -- Si el jugador estれく en el aire, establecer estado en "jump"
     if not onground() then
         plr.state = "jump"
@@ -523,26 +532,59 @@ function boss_draw()
     end
 end
 
-
 function check_boss_collision()
-    -- detecciれはn de colisiれはn con balas (daれねo al boss)
+    -- Detecciれはn de colisiれはn con balas (daれねo al boss)
     for b in all(bullets) do
         if boss.alive and abs(b.x - boss.x) < 16 and abs(b.y - boss.y) < 16 then
             boss.health -= 1
-            del(bullets, b) -- eliminar la bala
+            del(bullets, b) -- Eliminar la bala
 
-            -- si la vida llega a 0, eliminar al boss
+            -- Si la vida llega a 0, eliminar al boss
             if boss.health <= 0 then
                 boss.alive = false
             end
         end
     end
 
-    -- detecciれはn de colisiれはn con el jugador (daれねo al jugador)
+    -- **Detecciれはn de colisiれはn con el jugador**
     if boss.alive and abs(plr.x - boss.x) < 16 and abs(plr.y - boss.y) < 16 then
-        reset_player(1) -- restar 1 de vida al jugador
+        if player_invincible_timer <= 0 then
+            --reset_player(1) -- Restar 1 de vida al jugador
+												plr.health -= 1
+            -- Intentar empujar al jugador sin atravesar paredes
+            local new_x = plr.x
+            local new_y = plr.y
+
+            if plr.x < boss.x then
+                new_x -= 8 -- Lo empuja a la izquierda
+            else
+                new_x += 8 -- Lo empuja a la derecha
+            end
+
+            if plr.y < boss.y then
+                new_y -= 8 -- Lo empuja hacia arriba
+            else
+                new_y += 8 -- Lo empuja hacia abajo
+            end
+
+            -- Si el nuevo lugar es un bloque sれはlido, intentar otra direcciれはn
+            if is_tile_map(flr(new_x / 8), flr(plr.y / 8)) then
+                new_x = plr.x -- No moverse en X si hay colisiれはn
+            end
+            if is_tile_map(flr(plr.x / 8), flr(new_y / 8)) then
+                new_y = plr.y -- No moverse en Y si hay colisiれはn
+            end
+
+            -- Asignar nueva posiciれはn al jugador solo si es un lugar vれくlido
+            plr.x = new_x
+            plr.y = new_y
+
+            -- Establecer un tiempo de invulnerabilidad tras la colisiれはn
+            player_invincible_timer = 30 -- 30 frames de inmunidad (~0.5 seg)
+        end
     end
 end
+
 
 __gfx__
 0000000000111000000000000011100000111000000000000000000000000000dddddddddddddddd0ffffff000bbb000dddddddddd55511dd111111d00000000
@@ -585,7 +627,7 @@ __map__
 290909090908090908090909090909090a09090909090909080909090909090a0909090909090909090909090909090a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 290909090909090909090908090909090a09090909090909090909090909090a090a0a090909080909090a0a0909090a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 292a09090908090909090909090909090a090908090909090909090d0909090a0909090909090909090909090909090a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-292909090909090929292a09090909090a0a090909090809090909090909090a0909080909090909090909090909090a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+292909090909092a29292a09090909090a0a090909090809090909090909090a0909080909090909090909090909090a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 292929292a09090909090909090909090a0a0a0a0a090909090a0a0a0909090a090909090919090d09090909090d09190000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2909090909090909090909090919090c0a0a0a0909090909090909090909090a0909090a0a0a0a0a09090809090a0a0a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 2909090909090809090909292929292928090a09090a0a09090909090809090a0909090909090909090909090909090a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
