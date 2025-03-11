@@ -20,9 +20,13 @@ function _init()
         jforce = 0,
         jcd = 0, -- Jump cooldown
         state = "idle",
-        sp = 1
+        sp = 1,
+        health = 3,
+        pickups = 0,
+        score = 0
     }
     soundclear=true
+    init_hud()
      
 end
 
@@ -41,6 +45,8 @@ function _update()
     --if not stat(57) then
     --    music(0)
     --end
+    
+    update_hud()
 				
 end
 
@@ -50,6 +56,7 @@ function _draw()
     draw_player()
     draw_bullets()
     draw_enemies()
+    draw_hud()
 end
 
 -->8
@@ -206,16 +213,17 @@ function init_enemies()
                     x = x * 8, 
                     y = y * 8, 
                     sp = 26, 
-                    frames = {26, 27}, -- Animación de movimiento
-                    frame_timer = 0, -- Control de animación
+                    frames = {26, 27}, -- Animaciれはn de movimiento
+                    frame_timer = 0, -- Control de animaciれはn
                     f = true, 
                     ox = x * 8, 
                     dx = 1, 
                     speed = 0.5, 
-                    turn_timer = 0, -- Timer para cambiar dirección
-                    dying = false,  -- Estado de destrucción
-                    death_timer = 0, -- Controla la animación antes de desaparecer
-                    blink_timer = 0 -- Controla el parpadeo antes de desaparecer
+                    turn_timer = 0, -- Timer para cambiar direcciれはn
+                    dying = false,  -- Estado de destrucciれはn
+                    death_timer = 0, -- Controla la animaciれはn antes de desaparecer
+                    blink_timer = 0, -- Controla el parpadeo antes de desaparecer
+                    value = 1
                 })
             end
         end
@@ -228,30 +236,30 @@ end
 function update_enemies()
     for e in all(enemies) do
         if e.dying then
-            update_enemy_destruction(e) -- Manejar animación de muerte
+            update_enemy_destruction(e) -- Manejar animaciれはn de muerte
         else
-            -- Calcular la nueva posición
+            -- Calcular la nueva posiciれはn
             local new_x = e.x + e.dx * e.speed
             local new_y = e.y + 1 -- Simular gravedad
 
-            -- Coordenadas para detección de colisión
+            -- Coordenadas para detecciれはn de colisiれはn
             local ptxl = flr((e.x + 2) / 8) -- Lado izquierdo
             local ptxr = flr((e.x + 5) / 8) -- Lado derecho
             local pty = flr((e.y + 8) / 8) -- Pies del enemigo
             local ground_left = is_tile_map(ptxl, pty) -- Suelo a la izquierda
             local ground_right = is_tile_map(ptxr, pty) -- Suelo a la derecha
 
-            -- Verificar si el enemigo está en el aire y aplicar gravedad
+            -- Verificar si el enemigo estれく en el aire y aplicar gravedad
             if not ground_left and not ground_right then
                 e.y = new_y -- Dejar que caiga
             else
-                -- Detectar si el enemigo está en el borde de una plataforma
+                -- Detectar si el enemigo estれく en el borde de una plataforma
                 local ptxl_next = flr((new_x + 2) / 8)
                 local ptxr_next = flr((new_x + 5) / 8)
                 local ground_left_next = is_tile_map(ptxl_next, pty)
                 local ground_right_next = is_tile_map(ptxr_next, pty)
 
-                -- Si va a caer en el próximo paso, cambiar de dirección
+                -- Si va a caer en el prれはximo paso, cambiar de direcciれはn
                 if (not ground_left_next and e.dx < 0) or (not ground_right_next and e.dx > 0) then
                     e.turn_timer += 1
                     if e.turn_timer > 10 then -- Esperar 10 frames antes de girar
@@ -260,12 +268,12 @@ function update_enemies()
                         e.turn_timer = 0 -- Reiniciar temporizador de giro
                     end
                 else
-                    e.turn_timer = 0 -- Si no está en el borde, resetear temporizador
+                    e.turn_timer = 0 -- Si no estれく en el borde, resetear temporizador
                     e.x = new_x -- Mover enemigo
                 end
             end
 
-            -- **Animación normal del enemigo**
+            -- **Animaciれはn normal del enemigo**
             e.frame_timer += 1
             if e.frame_timer > 10 then -- Cambia de sprite cada 10 frames
                 if e.sp == e.frames[1] then
@@ -273,7 +281,7 @@ function update_enemies()
                 else
                     e.sp = e.frames[1]
                 end
-                e.frame_timer = 0 -- Resetear temporizador de animación
+                e.frame_timer = 0 -- Resetear temporizador de animaciれはn
             end
         end
     end
@@ -301,9 +309,10 @@ function check_player_enemy_collision()
 end
 
 function update_enemy_destruction(e)
+    sfx(3)
     e.death_timer += 1
 
-    -- Animación de destrucción (3 frames: 22, 23, 24)
+    -- Animaciれはn de destrucciれはn (3 frames: 22, 23, 24)
     if e.death_timer < 6 then
         e.sp = 22
     elseif e.death_timer < 12 then
@@ -316,12 +325,14 @@ function update_enemy_destruction(e)
         if e.blink_timer % 4 < 2 then
             e.sp = 0 -- Invisible
         else
-            e.sp = 24 -- Último frame de animación
+            e.sp = 24 -- れあltimo frame de animaciれはn
         end
 
-        -- Eliminar enemigo después de un tiempo
+        -- Eliminar enemigo despuれたs de un tiempo
         if e.blink_timer > 16 then
             del(enemies, e)
+            plr.score += e.value
+            update_hud()
         end
     end
 end
@@ -354,7 +365,7 @@ function update_bullets()
         
         for e in all(enemies) do
             if abs(b.x - e.x) < 7 and abs(b.y - e.y) < 7 then
-                -- Activar animación de destrucción y detener movimiento
+                -- Activar animaciれはn de destrucciれはn y detener movimiento
                 e.dying = true
                 e.dx = 0
                 e.speed = 0
@@ -377,6 +388,42 @@ function draw_bullets()
     end
 end
 
+
+-->8
+-- hud --
+
+
+function init_hud()
+    -- puedes inicializar otros valores si necesitas mれくs lれはgica
+    
+    hud = {
+	    x = 85, 
+	    y = 2, -- posiciれはn en la pantalla
+	    width = 40, 
+	    height = 22, -- tamaれねo del recuadro
+	    health = 3, -- vida inicial
+	    score = 0, -- puntuaciれはn inicial
+	    pickups = 0 -- recolectables iniciales
+				}
+
+end
+
+function update_hud()
+    -- aquれと puedes actualizar el hud con variables globales del jugador si lo deseas
+    hud.health = plr.health
+    hud.score = plr.score
+    hud.pickups = plr.pickups
+end
+
+function draw_hud()
+    -- dibujar el fondo del hud
+    rectfill(hud.x, hud.y, hud.x + hud.width, hud.y + hud.height, 0) -- fondo oscuro
+
+    -- dibujar iconos y valores
+    print("♥"..hud.health, hud.x + 3, hud.y + 2, 8)  -- vida (rojo)
+    print("★"..hud.score, hud.x + 3, hud.y + 8, 10) -- puntos (amarillo)
+    print("●"..hud.pickups, hud.x + 3, hud.y + 16, 11) -- frutas (verde)
+end
 
 __gfx__
 0000000000111000000000000011100000111000000000000000000000000000dddddddddddddddd0ffffff000bbb000dddddddddd55511dd111111d00000000
