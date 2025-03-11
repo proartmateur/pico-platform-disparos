@@ -194,27 +194,25 @@ end
 
 
 function init_enemies()
-    enemies = {} -- Asegurar que enemies estれた limpio antes de iniciar
+    enemies = {} 
 
-    -- Loop para encontrar enemigos en el mapa
     for x = 0, 47 do
         for y = 0, 15 do
-            if mget(x, y) == 25 then -- Si el tile es un enemigo
-                
-                add(putbacks, { tx = x, ty = y, sp = 25 }) -- Guardar tile original
-                mset(x, y, 9) -- Borrar el enemigo del mapa
-                
-                -- Agregar enemigo a la lista con animaciれはn
+            if mget(x, y) == 25 then 
+                add(putbacks, { tx = x, ty = y, sp = 25 }) 
+                mset(x, y, 9) 
+
                 add(enemies, {
                     x = x * 8, 
                     y = y * 8, 
-                    sp = 26, -- Sprite inicial
-                    frames = {26, 27}, -- Lista de frames de animaciれはn
+                    sp = 26, 
                     f = true, 
+                    ox = x * 8, 
                     dx = 1, 
                     speed = 0.5, 
-                    frame_timer = 0, -- Contador para animaciれはn
-                    turn_timer = 0 -- Evitar giros rれくpidos
+                    dying = false,  -- Nuevo estado de destrucción
+                    death_timer = 0, -- Controla la animación antes de desaparecer
+                    blink_timer = 0 -- Controla el parpadeo antes de desaparecer
                 })
             end
         end
@@ -222,55 +220,26 @@ function init_enemies()
 end
 
 
+
 function update_enemies()
     for e in all(enemies) do
-        -- Calcular la nueva posiciれはn
-        local new_x = e.x + e.dx * e.speed
-        local new_y = e.y + 1 -- Simular gravedad
-
-        -- Coordenadas para detecciれはn de colisiれはn
-        local ptxl = flr((e.x + 2) / 8) -- Lado izquierdo
-        local ptxr = flr((e.x + 5) / 8) -- Lado derecho
-        local pty = flr((e.y + 8) / 8) -- Pies del enemigo
-        local ground_left = is_tile_map(ptxl, pty) -- Suelo a la izquierda
-        local ground_right = is_tile_map(ptxr, pty) -- Suelo a la derecha
-
-        -- Verificar si el enemigo estれく en el aire y aplicar gravedad
-        if not ground_left and not ground_right then
-            e.y = new_y -- Dejar que caiga
+        if e.dying then
+            update_enemy_destruction(e)
         else
-            -- Detectar si el enemigo estれく en el borde de una plataforma
-            local ptxl_next = flr((new_x + 2) / 8)
-            local ptxr_next = flr((new_x + 5) / 8)
-            local ground_left_next = is_tile_map(ptxl_next, pty)
-            local ground_right_next = is_tile_map(ptxr_next, pty)
+            -- Movimiento normal del enemigo
+            e.x += e.dx * e.speed 
 
-            -- Si va a caer en el prれはximo paso, cambiar de direcciれはn
-            if not ground_left_next and e.dx < 0 or not ground_right_next and e.dx > 0 then
-                e.turn_timer += 1
-                if e.turn_timer > 10 then -- Esperar 10 frames antes de girar
-                    e.dx *= -1
-                    e.f = not e.f -- Voltear sprite
-                    e.turn_timer = 0 -- Reiniciar temporizador de giro
-                end
-            else
-                e.turn_timer = 0 -- Si no estれく en el borde, resetear temporizador
-                e.x = new_x -- Mover enemigo
-            end
-        end
+            local ptxl = flr((e.x + 2) / 8)
+            local ptxr = flr((e.x + 5) / 8)
+            local pty = flr((e.y + 8) / 8)
 
-        -- **Animaciれはn**
-        e.frame_timer += 1
-        if e.frame_timer > 10 then -- Cambia de sprite cada 10 frames
-            if e.sp == e.frames[1] then
-                e.sp = e.frames[2]
-            else
-                e.sp = e.frames[1]
+            if is_tile_map(ptxl, pty) or is_tile_map(ptxr, pty) then
+                e.dx *= -1
             end
-            e.frame_timer = 0 -- Resetear temporizador de animaciれはn
         end
     end
 end
+
 
 
 
@@ -289,6 +258,33 @@ function check_player_enemy_collision()
         end
     end
 end
+
+function update_enemy_destruction(e)
+    e.death_timer += 1
+
+    -- Animación de destrucción (3 frames: 22, 23, 24)
+    if e.death_timer < 6 then
+        e.sp = 22
+    elseif e.death_timer < 12 then
+        e.sp = 23
+    elseif e.death_timer < 18 then
+        e.sp = 24
+    else
+        -- Fase de parpadeo antes de eliminar
+        e.blink_timer += 1
+        if e.blink_timer % 4 < 2 then
+            e.sp = 0 -- Invisible
+        else
+            e.sp = 24 -- Último frame de animación
+        end
+
+        -- Eliminar enemigo después de un tiempo
+        if e.blink_timer > 16 then
+            del(enemies, e)
+        end
+    end
+end
+
 
 function reset_player()
     plr.x = 20
@@ -310,23 +306,23 @@ function update_bullets()
     for b in all(bullets) do
         b.x += b.dx
 
-        -- Elimina balas fuera del mapa
         if b.x < 0 or b.x > 128 then 
             del(bullets, b) 
         end
         
-        -- Detectar colisiれはn con los enemigos
         for e in all(enemies) do
-            if abs(b.x - e.x) < 7 and abs(b.y - e.y) < 7 then -- Aumenta el rango de detecciれはn
-                sfx(3)
-                del(enemies, e) -- Elimina enemigo
-                del(bullets, b) -- Elimina la bala tras el impacto
-                
+            if abs(b.x - e.x) < 7 and abs(b.y - e.y) < 7 then
+                -- Activar animación de destrucción
+                e.dying = true
+                e.death_timer = 0
+                e.blink_timer = 0
+                del(bullets, b) -- Eliminar la bala
                 break
             end
         end
     end
 end
+
 
 
 function draw_bullets()
@@ -347,13 +343,13 @@ __gfx__
 0000000000111000001311500011100000111000000000000000000000000000dddddddddddddddd2545454f00024000dd3b3dddd16aa91d1cccccc100000000
 0000000000101000001001000001010000100100000000000000000000000000dddddddddddddddd0222222000024000ddd33ddddd1111dd1cccccc100000000
 0000000000111000000000000000000000000000000000000000000000000000000000000000000000000000000000009999dddddddd99990000000000000000
-00000000017bb1000000000000000000000000000000000000000000000000000000000001111000011110000000000098999899998999890000000000000000
-0000000001bba10000000000000111000000000000000000000000000000000000000000189991001b8881000111100099989998899989990000000000000000
-0000000011bbb155000000000017bb100000000000000000000000000000000000000000199989101888b8101b88810099999999999999990000000000000000
-000000000133335000001110017bba10000000000000000000000000000000000000000017179991171788811888b81098989898898989890000000000000000
-000000000013110000017bb101bbbb10000000000000000000000000000000000000000001019991010188811717888189898989989898980000000000000000
-00000000001110000117bb5101bb3310000000000000000000000000000000000000000017179991171788811717888198989898898989890000000000000000
-00000000010001001333bbb11b333100000000000000000000000000000000000000000019999910188888101888881088888888888888880000000000000000
+00000000017bb1000000000000000000000000000000000001111000011110000111100001111000011110000000000098999899998999890000000000000000
+0000000001bba100000000000001110000000000000000001b8891001b9891001a999100189991001b8881000111100099989998899989990000000000000000
+0000000011bbb155000000000017bb1000000000000000001988b9101989b9101999a910199989101888b8101b88810099999999999999990000000000000000
+000000000133335000001110017bba10000000000000000017179881171799811717999117179991171788811888b81098989898898989890000000000000000
+000000000013110000017bb101bbbb10000000000000000001018981010189910101999101019991010188811717888189898989989898980000000000000000
+00000000001110000117bb5101bb3310000000000000000017179891171798811717999117179991171788811717888198989898898989890000000000000000
+00000000010001001333bbb11b333100000000000000000018888810188888101999991019999910188888101888881088888888888888880000000000000000
 0000000000000000000000000000000000000000000000000000000000000000dcccccccdccccccc000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000c1111111c1111111000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000c111111cc111111c000000000000000000000000000000000000000000000000
