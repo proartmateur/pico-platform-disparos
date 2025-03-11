@@ -181,9 +181,9 @@ end
 
 
 function init_enemies()
-    enemies = {} -- Limpiar lista antes de inicializar
+    enemies = {} -- Asegurar que enemies esté limpio antes de iniciar
 
-    -- Buscar enemigos en el mapa
+    -- Loop para encontrar enemigos en el mapa
     for x = 0, 47 do
         for y = 0, 15 do
             if mget(x, y) == 25 then -- Si el tile es un enemigo
@@ -191,16 +191,17 @@ function init_enemies()
                 add(putbacks, { tx = x, ty = y, sp = 25 }) -- Guardar tile original
                 mset(x, y, 9) -- Borrar el enemigo del mapa
                 
-                -- Agregar enemigo a la lista con animaciれはn
+                -- Agregar enemigo a la lista con animación
                 add(enemies, {
                     x = x * 8, 
                     y = y * 8, 
-                    sp = 26, 
+                    sp = 26, -- Sprite inicial
+                    frames = {26, 27}, -- Lista de frames de animación
                     f = true, 
                     dx = 1, 
                     speed = 0.5, 
-                    frame = 0,  -- Contador de animaciれはn
-                    frames = {26, 27} -- Secuencia de sprites para animaciれはn
+                    frame_timer = 0, -- Contador para animación
+                    turn_timer = 0 -- Evitar giros rápidos
                 })
             end
         end
@@ -210,28 +211,28 @@ end
 
 function update_enemies()
     for e in all(enemies) do
-        -- Calcular la nueva posiciれはn
+        -- Calcular la nueva posición
         local new_x = e.x + e.dx * e.speed
         local new_y = e.y + 1 -- Simular gravedad
 
-        -- Coordenadas para detecciれはn de colisiれはn
+        -- Coordenadas para detección de colisión
         local ptxl = flr((e.x + 2) / 8) -- Lado izquierdo
         local ptxr = flr((e.x + 5) / 8) -- Lado derecho
         local pty = flr((e.y + 8) / 8) -- Pies del enemigo
         local ground_left = is_tile_map(ptxl, pty) -- Suelo a la izquierda
         local ground_right = is_tile_map(ptxr, pty) -- Suelo a la derecha
 
-        -- Verificar si el enemigo estれく en el aire y aplicar gravedad
+        -- Verificar si el enemigo está en el aire y aplicar gravedad
         if not ground_left and not ground_right then
             e.y = new_y -- Dejar que caiga
         else
-            -- Detectar si el enemigo estれく en el borde de una plataforma
+            -- Detectar si el enemigo está en el borde de una plataforma
             local ptxl_next = flr((new_x + 2) / 8)
             local ptxr_next = flr((new_x + 5) / 8)
             local ground_left_next = is_tile_map(ptxl_next, pty)
             local ground_right_next = is_tile_map(ptxr_next, pty)
 
-            -- Si va a caer en el prれはximo paso, cambiar de direcciれはn
+            -- Si va a caer en el próximo paso, cambiar de dirección
             if not ground_left_next and e.dx < 0 or not ground_right_next and e.dx > 0 then
                 e.turn_timer += 1
                 if e.turn_timer > 10 then -- Esperar 10 frames antes de girar
@@ -240,17 +241,20 @@ function update_enemies()
                     e.turn_timer = 0 -- Reiniciar temporizador de giro
                 end
             else
-                e.turn_timer = 0 -- Si no estれく en el borde, resetear temporizador
+                e.turn_timer = 0 -- Si no está en el borde, resetear temporizador
                 e.x = new_x -- Mover enemigo
             end
         end
 
-        -- Animaciれはn: alternar sprites cada 10 frames
-        e.frame += 1
-        if e.frame % 10 == 0 then
-            e.sp = e.frames[1] -- Primer frame
-        elseif e.frame % 20 == 0 then
-            e.sp = e.frames[2] -- Segundo frame
+        -- **Animación**
+        e.frame_timer += 1
+        if e.frame_timer > 10 then -- Cambia de sprite cada 10 frames
+            if e.sp == e.frames[1] then
+                e.sp = e.frames[2]
+            else
+                e.sp = e.frames[1]
+            end
+            e.frame_timer = 0 -- Resetear temporizador de animación
         end
     end
 end
