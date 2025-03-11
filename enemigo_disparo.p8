@@ -27,6 +27,9 @@ function _init()
     }
     soundclear=true
     init_hud()
+    
+    level_name="base"
+    enemy_skin="inverse"
      
 end
 
@@ -52,7 +55,21 @@ end
 
 function _draw()
     cls()
+    if level_name == "yellow" then
+	    pal(12,10)
+	    pal(1,4)
+	    pal(9,12)
+	    pal(8,1)
+	    pal(13,15)
+	    pal(14,7)
+    end
+    --	pal(0,4)
     map()
+    pal()
+    if enemy_skin=="base" then
+     pal(8,1)
+    end
+    --pal()
     draw_player()
     draw_bullets()
     draw_enemies()
