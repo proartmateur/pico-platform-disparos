@@ -206,11 +206,14 @@ function init_enemies()
                     x = x * 8, 
                     y = y * 8, 
                     sp = 26, 
+                    frames = {26, 27}, -- Animación de movimiento
+                    frame_timer = 0, -- Control de animación
                     f = true, 
                     ox = x * 8, 
                     dx = 1, 
                     speed = 0.5, 
-                    dying = false,  -- Nuevo estado de destrucción
+                    turn_timer = 0, -- Timer para cambiar dirección
+                    dying = false,  -- Estado de destrucción
                     death_timer = 0, -- Controla la animación antes de desaparecer
                     blink_timer = 0 -- Controla el parpadeo antes de desaparecer
                 })
@@ -221,24 +224,62 @@ end
 
 
 
+
 function update_enemies()
     for e in all(enemies) do
         if e.dying then
-            update_enemy_destruction(e)
+            update_enemy_destruction(e) -- Manejar animación de muerte
         else
-            -- Movimiento normal del enemigo
-            e.x += e.dx * e.speed 
+            -- Calcular la nueva posición
+            local new_x = e.x + e.dx * e.speed
+            local new_y = e.y + 1 -- Simular gravedad
 
-            local ptxl = flr((e.x + 2) / 8)
-            local ptxr = flr((e.x + 5) / 8)
-            local pty = flr((e.y + 8) / 8)
+            -- Coordenadas para detección de colisión
+            local ptxl = flr((e.x + 2) / 8) -- Lado izquierdo
+            local ptxr = flr((e.x + 5) / 8) -- Lado derecho
+            local pty = flr((e.y + 8) / 8) -- Pies del enemigo
+            local ground_left = is_tile_map(ptxl, pty) -- Suelo a la izquierda
+            local ground_right = is_tile_map(ptxr, pty) -- Suelo a la derecha
 
-            if is_tile_map(ptxl, pty) or is_tile_map(ptxr, pty) then
-                e.dx *= -1
+            -- Verificar si el enemigo está en el aire y aplicar gravedad
+            if not ground_left and not ground_right then
+                e.y = new_y -- Dejar que caiga
+            else
+                -- Detectar si el enemigo está en el borde de una plataforma
+                local ptxl_next = flr((new_x + 2) / 8)
+                local ptxr_next = flr((new_x + 5) / 8)
+                local ground_left_next = is_tile_map(ptxl_next, pty)
+                local ground_right_next = is_tile_map(ptxr_next, pty)
+
+                -- Si va a caer en el próximo paso, cambiar de dirección
+                if (not ground_left_next and e.dx < 0) or (not ground_right_next and e.dx > 0) then
+                    e.turn_timer += 1
+                    if e.turn_timer > 10 then -- Esperar 10 frames antes de girar
+                        e.dx *= -1
+                        e.f = not e.f -- Voltear sprite
+                        e.turn_timer = 0 -- Reiniciar temporizador de giro
+                    end
+                else
+                    e.turn_timer = 0 -- Si no está en el borde, resetear temporizador
+                    e.x = new_x -- Mover enemigo
+                end
+            end
+
+            -- **Animación normal del enemigo**
+            e.frame_timer += 1
+            if e.frame_timer > 10 then -- Cambia de sprite cada 10 frames
+                if e.sp == e.frames[1] then
+                    e.sp = e.frames[2]
+                else
+                    e.sp = e.frames[1]
+                end
+                e.frame_timer = 0 -- Resetear temporizador de animación
             end
         end
     end
 end
+
+
 
 
 
@@ -286,6 +327,7 @@ function update_enemy_destruction(e)
 end
 
 
+
 function reset_player()
     plr.x = 20
     plr.y = 20
@@ -312,8 +354,10 @@ function update_bullets()
         
         for e in all(enemies) do
             if abs(b.x - e.x) < 7 and abs(b.y - e.y) < 7 then
-                -- Activar animación de destrucción
+                -- Activar animación de destrucción y detener movimiento
                 e.dying = true
+                e.dx = 0
+                e.speed = 0
                 e.death_timer = 0
                 e.blink_timer = 0
                 del(bullets, b) -- Eliminar la bala
@@ -322,6 +366,7 @@ function update_bullets()
         end
     end
 end
+
 
 
 
