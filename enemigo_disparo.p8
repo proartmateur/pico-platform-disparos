@@ -138,6 +138,15 @@ function draw_player()
     spr(plr.sp, plr.x, plr.y, 1, 1, plr.f)
 end
 
+function reset_player(damage)
+    plr.x = 20
+    plr.y = 20
+    plr.dx = 0
+    plr.dy = 0
+    plr.jforce = 0
+    plr.health -= damage
+end
+
 function is_tile_map(tx, ty)
     return fget(mget(tx, ty), 0)
 end
@@ -303,7 +312,8 @@ end
 function check_player_enemy_collision()
     for e in all(enemies) do
         if abs(plr.x - e.x) < 6 and abs(plr.y - e.y) < 6 then
-            reset_player() -- Funciれはn para manejar colisiれはn con el jugador
+            reset_player(1) -- Funciれはn para manejar colisiれはn con el jugador
+        
         end
     end
 end
@@ -339,13 +349,7 @@ end
 
 
 
-function reset_player()
-    plr.x = 20
-    plr.y = 20
-    plr.dx = 0
-    plr.dy = 0
-    plr.jforce = 0
-end
+
 
 -->8
 -- bullets --
@@ -404,7 +408,7 @@ function init_hud()
 	    health = 3, -- vida inicial
 	    score = 0, -- puntuaciれはn inicial
 	    pickups = 0 -- recolectables iniciales
-				}
+		}
 
 end
 
