@@ -523,7 +523,9 @@ function boss_draw()
     end
 end
 
+
 function check_boss_collision()
+    -- detecciれはn de colisiれはn con balas (daれねo al boss)
     for b in all(bullets) do
         if boss.alive and abs(b.x - boss.x) < 16 and abs(b.y - boss.y) < 16 then
             boss.health -= 1
@@ -534,6 +536,11 @@ function check_boss_collision()
                 boss.alive = false
             end
         end
+    end
+
+    -- detecciれはn de colisiれはn con el jugador (daれねo al jugador)
+    if boss.alive and abs(plr.x - boss.x) < 16 and abs(plr.y - boss.y) < 16 then
+        reset_player(1) -- restar 1 de vida al jugador
     end
 end
 
